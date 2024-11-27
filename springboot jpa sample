@@ -1,0 +1,221 @@
+a DB2 table where the ID column is NOT NULL but not marked as a primary key. To make it work with Spring JPA, we need to use a custom ID generation strategy or assign the ID programmatically.
+
+1. Table Setup
+
+Assume the following DB2 table structure:
+
+CREATE TABLE AUTO_TEST_CASES (
+    ID BIGINT NOT NULL,      -- Not a primary key but must be unique and not null
+    TEST_CASE_NAME VARCHAR(100),
+    DESCRIPTION VARCHAR(255)
+);
+
+2. Spring Boot Project Dependencies
+
+Add the following dependencies to pom.xml:
+
+<dependencies>
+    <!-- Spring Boot Starter JPA -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+
+    <!-- DB2 Driver -->
+    <dependency>
+        <groupId>com.ibm.db2</groupId>
+        <artifactId>jcc</artifactId>
+        <version>11.5.7.0</version>
+    </dependency>
+
+    <!-- Spring Boot Starter Web -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+</dependencies>
+
+
+3. application.properties
+
+Configure the DB2 database connection:
+
+spring.datasource.url=jdbc:db2://<db-host>:<db-port>/<db-name>
+spring.datasource.username=<db-username>
+spring.datasource.password=<db-password>
+spring.datasource.driver-class-name=com.ibm.db2.jcc.DB2Driver
+
+# Hibernate configuration
+spring.jpa.database-platform=org.hibernate.dialect.DB2Dialect
+spring.jpa.hibernate.ddl-auto=update
+logging.level.org.hibernate.SQL=DEBUG
+
+4. Entity Class
+
+Map the AUTO_TEST_CASES table to a Spring JPA entity. Since the ID column is not a primary key, we’ll handle it with a custom ID generator.
+
+Example:
+
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "AUTO_TEST_CASES")
+public class AutoTestCase {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Generates ID for the column
+    @Column(name = "ID", nullable = false, unique = true) // Mark ID as not null
+    private Long id;
+
+    @Column(name = "TEST_CASE_NAME")
+    private String testCaseName;
+
+    @Column(name = "DESCRIPTION")
+    private String description;
+
+    // Getters and setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTestCaseName() {
+        return testCaseName;
+    }
+
+    public void setTestCaseName(String testCaseName) {
+        this.testCaseName = testCaseName;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+}
+
+
+5. Repository Interface
+
+Define a Spring Data JPA repository for the entity:
+
+
+package com.example.demo.repository;
+
+import com.example.demo.entity.AutoTestCase;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface AutoTestCaseRepository extends JpaRepository<AutoTestCase, Long> {
+}
+
+
+
+6. Service to Handle Custom ID Logic
+
+If you need to generate IDs programmatically, you can use a service to handle it.
+
+Example:
+
+
+package com.example.demo.service;
+
+import com.example.demo.entity.AutoTestCase;
+import com.example.demo.repository.AutoTestCaseRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+@Service
+public class AutoTestCaseService {
+
+    private final AutoTestCaseRepository repository;
+
+    private final AtomicLong idGenerator = new AtomicLong(1000L); // Start ID generation from 1000
+
+    public AutoTestCaseService(AutoTestCaseRepository repository) {
+        this.repository = repository;
+    }
+
+    // Save with generated ID
+    public AutoTestCase saveAutoTestCase(AutoTestCase autoTestCase) {
+        if (autoTestCase.getId() == null) {
+            autoTestCase.setId(idGenerator.incrementAndGet());
+        }
+        return repository.save(autoTestCase);
+    }
+}
+
+
+7. Controller
+
+Create a REST controller to expose endpoints for the application.
+
+Example:
+
+package com.example.demo.controller;
+
+import com.example.demo.entity.AutoTestCase;
+import com.example.demo.service.AutoTestCaseService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/test-cases")
+public class AutoTestCaseController {
+
+    private final AutoTestCaseService service;
+
+    public AutoTestCaseController(AutoTestCaseService service) {
+        this.service = service;
+    }
+
+    // Save a new test case
+    @PostMapping
+    public AutoTestCase createTestCase(@RequestBody AutoTestCase testCase) {
+        return service.saveAutoTestCase(testCase);
+    }
+
+    // Get all test cases
+    @GetMapping
+    public List<AutoTestCase> getAllTestCases() {
+        return service.getRepository().findAll();
+    }
+}
+
+
+8. Run and Test
+
+	1.	Start the Application
+
+ mvn spring-boot:run
+
+
+ 
+	2.	POST a New Test Case
+
+ curl -X POST http://localhost:8080/api/test-cases \
+-H "Content-Type: application/json" \
+-d '{"testCaseName": "Test Login", "description": "Login functionality test"}'
+
+
+
+	3.	GET All Test Cases
+
+ curl http://localhost:8080/api/test-cases
+
+ Key Points
+
+	1.	The ID column is managed either by JPA’s @GeneratedValue or programmatically using an AtomicLong.
+	2.	The @Column annotation ensures the ID column is mapped correctly with constraints like NOT NULL and UNIQUE.
+	3.	The service layer handles additional logic (like ID assignment) if required.
+
+Let me know if you need further clarification!
+
