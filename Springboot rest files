@@ -57,3 +57,70 @@ Configure application.properties for file size limits if needed:
 
 spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=50
+
+
+--------
+
+
+@RestController
+@RequestMapping("/api")
+public class FileUploadController {
+
+    private static final String UPLOAD_DIR = "uploads";
+
+    @PostConstruct
+    public void init() {
+        File directory = new File(UPLOAD_DIR);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+    }
+
+    @PostMapping(value = "/uploadFiles", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+        summary = "Upload multiple files",
+        description = "This endpoint allows uploading multiple files",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(
+                mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                schema = @Schema(
+                    type = "object",
+                    properties = {
+                        @SchemaProperty(
+                            name = "files",
+                            schema = @Schema(type = "array", items = @Schema(type = "string", format = "binary"))
+                        )
+                    }
+                )
+            )
+        )
+    )
+    public ResponseEntity<String> uploadFiles(@RequestParam("files") MultipartFile[] files) {
+        StringBuilder message = new StringBuilder();
+        for (MultipartFile file : files) {
+            try {
+                File targetFile = new File(UPLOAD_DIR, file.getOriginalFilename());
+                file.transferTo(targetFile);
+                message.append("Uploaded file: ").append(file.getOriginalFilename()).append("\n");
+            } catch (IOException e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Failed to upload files: " + e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(message.toString());
+    }
+}
+
+Key Points
+
+	1.	Swagger Annotations:
+	•	Use @Schema and @Content to define the expected MultipartFile array in Swagger UI.
+	•	Specify type = "array" with items of type string and format = "binary".
+	2.	Ensure Correct MIME Type:
+	•	Use MediaType.MULTIPART_FORM_DATA_VALUE in both the @PostMapping and @Operation annotations.
+	3.	Swagger UI Setup:
+	•	This configuration ensures the Swagger UI generates a file input field that supports selecting multiple files.
+	4.	Folder for File Storage:
+	•	The uploads folder is created automatically if it doesn’t exist.
+
+With this configuration, Swagger UI should display a file input field that allows selecting multiple files for the files parameter. Let me know if this resolves the issue or if additional tweaks are needed.
