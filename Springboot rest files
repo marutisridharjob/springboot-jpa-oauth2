@@ -14,6 +14,20 @@ public class FileUploadController {
         }
     }
 
+
+@PostMapping("/uploadFiles")
+public ResponseEntity<String> uploadFiles(
+        @RequestParam("files") MultipartFile[] files,
+        @RequestParam(value = "IndexOrValue", required = false) String indexOrValue) {
+    if (indexOrValue != null && !indexOrValue.isEmpty()) {
+        // Handle additional field
+    }
+    // File processing logic here
+    return ResponseEntity.ok("Files uploaded successfully!");
+}
+
+
+
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFiles(@RequestParam("files") MultipartFile[] files) {
         StringBuilder message = new StringBuilder();
