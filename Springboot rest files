@@ -1,0 +1,45 @@
+Spring Boot REST endpoint for accepting multiple files and writing them to a local directory:
+
+@RestController
+@RequestMapping("/files")
+public class FileUploadController {
+
+    private static final String UPLOAD_DIR = "uploads";
+
+    @PostConstruct
+    public void init() {
+        File directory = new File(UPLOAD_DIR);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+    }
+
+    @PostMapping("/upload")
+    public ResponseEntity<String> uploadFiles(@RequestParam("files") MultipartFile[] files) {
+        StringBuilder message = new StringBuilder();
+
+        for (MultipartFile file : files) {
+            try {
+                File targetFile = new File(UPLOAD_DIR, file.getOriginalFilename());
+                file.transferTo(targetFile);
+                message.append("File uploaded: ").append(targetFile.getName()).append("\n");
+            } catch (IOException e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Failed to upload files: " + e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(message.toString());
+    }
+}
+
+Key Points:
+
+	1.	Endpoint: /files/upload accepts multiple files via the files parameter.
+	2.	Directory Creation: Ensures the uploads directory exists.
+	3.	Saving Files: Each file is written to the uploads directory.
+	4.	Response: Returns a success message for uploaded files.
+
+Configure application.properties for file size limits if needed:
+
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=50
