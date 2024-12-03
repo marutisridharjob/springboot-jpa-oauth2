@@ -124,3 +124,42 @@ Key Points
 	•	The uploads folder is created automatically if it doesn’t exist.
 
 With this configuration, Swagger UI should display a file input field that allows selecting multiple files for the files parameter. Let me know if this resolves the issue or if additional tweaks are needed.
+
+
+---------
+
+
+@RestController
+@RequestMapping("/api/files")
+public class FileUploadController {
+
+    private static final String UPLOAD_DIR = "uploads";
+
+    @PostConstruct
+    public void init() {
+        File directory = new File(UPLOAD_DIR);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+    }
+
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> uploadFiles(
+            @RequestPart("files") MultipartFile[] files,
+            @RequestPart(value = "indexOrValue", required = false) String indexOrValue) {
+        
+        StringBuilder responseMessage = new StringBuilder("Uploaded Files:\n");
+        for (MultipartFile file : files) {
+            try {
+                File destinationFile = new File(UPLOAD_DIR, file.getOriginalFilename());
+                file.transferTo(destinationFile);
+                responseMessage.append(file.getOriginalFilename()).append("\n");
+            } catch (IOException e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Error uploading files: " + e.getMessage());
+            }
+        }
+        responseMessage.append("IndexOrValue: ").append(indexOrValue);
+        return ResponseEntity.ok(responseMessage.toString());
+    }
+}
