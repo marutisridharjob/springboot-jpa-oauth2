@@ -1,4 +1,4 @@
-Spring Boot REST endpoint for accepting multiple files and writing them to a local directory:
+no Spring Boot REST endpoint for accepting multiple files and writing them to a local directory:
 
 @RestController
 @RequestMapping("/files")
@@ -252,6 +252,8 @@ Add spring-boot-starter-web dependency to both applications’ pom.xml.
 Here’s the updated implementation using MultipartFile from Spring Framework:
 
 Application 1: Sending Files as Multipart
+
+MultipartFile is primarily designed for receiving files, not for sending them. However, you can mimic the behavior by creating a similar structure in the response using a MultiValueMap to send files, and the receiving application can handle them as MultipartFile. Below is the revised implementation:
 
 @RestController
 @RequestMapping("/files")
