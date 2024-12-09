@@ -163,3 +163,88 @@ public class FileUploadController {
         return ResponseEntity.ok(responseMessage.toString());
     }
 }
+
+
+-------------------------
+
+Here is a concise code snippet to achieve the requirements in two Spring Boot applications:
+
+
+Application 1: Finding and Sending Files
+
+@RestController
+@RequestMapping("/files")
+public class FileController {
+
+    @GetMapping("/upload")
+    public ResponseEntity<List<FileResponse>> uploadFiles() throws IOException {
+        Path folderPath = Paths.get("C:/local-folder"); // Specify your folder path
+        List<FileResponse> files = Files.list(folderPath)
+                .filter(Files::isRegularFile)
+                .map(path -> {
+                    try {
+                        return new FileResponse(path.getFileName().toString(), Files.readAllBytes(path));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).toList();
+        return ResponseEntity.ok(files);
+    }
+}
+
+class FileResponse {
+    private String fileName;
+    private byte[] content;
+
+    // Getters and Setters
+    public FileResponse(String fileName, byte[] content) {
+        this.fileName = fileName;
+        this.content = content;
+    }
+}
+
+
+Application 2: Receiving and Writing Files
+
+
+@RestController
+@RequestMapping("/files")
+public class FileReceiverController {
+
+    @PostMapping("/receive")
+    public ResponseEntity<String> receiveFiles(@RequestBody List<FileResponse> files) {
+        Path outputFolder = Paths.get("C:/output-folder"); // Specify your output folder path
+        try {
+            for (FileResponse file : files) {
+                Path filePath = outputFolder.resolve(file.getFileName());
+                Files.write(filePath, file.getContent());
+            }
+            return ResponseEntity.ok("Files received and saved successfully.");
+        } catch (IOException e) {
+            throw new RuntimeException("Error writing files to folder", e);
+        }
+    }
+}
+
+class FileResponse {
+    private String fileName;
+    private byte[] content;
+
+    // Getters and Setters
+}
+
+
+Explanation:
+	1.	First Application (uploadFiles Endpoint):
+	•	Scans the specified folder for files.
+	•	Reads the file names and contents into a FileResponse object.
+	•	Sends the list of files as a JSON response.
+	2.	Second Application (receiveFiles Endpoint):
+	•	Accepts a list of FileResponse objects.
+	•	Writes each file to the specified output folder.
+
+Dependencies:
+
+Add spring-boot-starter-web dependency to both applications’ pom.xml.
+
+
