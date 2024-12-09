@@ -247,4 +247,64 @@ Dependencies:
 
 Add spring-boot-starter-web dependency to both applications’ pom.xml.
 
+----------
+
+Here’s the updated implementation using MultipartFile from Spring Framework:
+
+Application 1: Sending Files as Multipart
+
+@RestController
+@RequestMapping("/files")
+public class FileController {
+
+    @GetMapping("/upload")
+    public ResponseEntity<MultiValueMap<String, Object>> uploadFiles() throws IOException {
+        Path folderPath = Paths.get("C:/local-folder"); // Specify your folder path
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+        Files.list(folderPath)
+                .filter(Files::isRegularFile)
+                .forEach(path -> {
+                    try {
+                        FileSystemResource fileResource = new FileSystemResource(path.toFile());
+                        body.add("files", fileResource);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error reading file: " + path, e);
+                    }
+                });
+
+        return ResponseEntity.ok(body);
+    }
+}
+
+
+Application 2: Receiving Multipart Files
+
+@RestController
+@RequestMapping("/files")
+public class FileReceiverController {
+
+    @PostMapping(value = "/receive", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> receiveFiles(@RequestParam("files") List<MultipartFile> files) {
+        Path outputFolder = Paths.get("C:/output-folder"); // Specify your output folder path
+        try {
+            for (MultipartFile file : files) {
+                Path filePath = outputFolder.resolve(file.getOriginalFilename());
+                Files.write(filePath, file.getBytes());
+            }
+            return ResponseEntity.ok("Files received and saved successfully.");
+        } catch (IOException e) {
+            throw new RuntimeException("Error writing files to folder", e);
+        }
+    }
+}
+
+Explanation:
+	1.	First Application (uploadFiles Endpoint):
+	•	Reads files from a local folder.
+	•	Wraps each file in a FileSystemResource to enable streaming as MultipartFile.
+	•	Sends files in a MultiValueMap response.
+	2.	Second Application (receiveFiles Endpoint):
+	•	Receives files as a List<MultipartFile>.
+	•	Writes each file to the local folder using Files.write.
 
